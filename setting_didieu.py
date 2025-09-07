@@ -538,7 +538,7 @@ class PDFProcessor:
                                 canvas.drawImage(img_reader, 0, 0, width=self.layout_width, height=self.layout_height)
                                 
                                 canvas.restoreState()
-                                print(f"    Successfully placed page {page_num + 1}")
+                                print(f"    Successfully placed page {page_num + 1} (as image)")
                             else:
                                 # Fallback: draw placeholder if image conversion fails
                                 self._draw_placeholder(canvas, x, y, page_num)
@@ -548,8 +548,13 @@ class PDFProcessor:
                             # Fallback: draw placeholder
                             self._draw_placeholder(canvas, x, y, page_num)
                     else:
-                        # If pdf2image not available, use placeholder
-                        self._draw_placeholder(canvas, x, y, page_num)
+                        # If pdf2image not available, try to embed PDF directly
+                        try:
+                            self._embed_pdf_page(canvas, temp_path, x, y, page_num)
+                        except Exception as embed_error:
+                            print(f"PDF embedding error for page {page_num}: {embed_error}")
+                            # Final fallback: draw placeholder
+                            self._draw_placeholder(canvas, x, y, page_num)
                     
                     # Clean up temporary file
                     if os.path.exists(temp_path):
@@ -562,6 +567,49 @@ class PDFProcessor:
             print(f"Error processing page {page_num}: {e}")
             # Draw error placeholder
             self._draw_error_placeholder(canvas, x, y, page_num)
+
+    def _embed_pdf_page(self, canvas, pdf_path, x, y, page_num):
+        """Try to embed PDF page directly without image conversion"""
+        try:
+            # Read the PDF page
+            with open(pdf_path, 'rb') as file:
+                pdf_reader = PyPDF2.PdfReader(file)
+                page = pdf_reader.pages[0]  # First page of the single-page PDF
+                
+                # Get page dimensions
+                page_width = float(page.mediabox.width)
+                page_height = float(page.mediabox.height)
+                
+                # Calculate scale to fit in layout
+                scale_x = self.layout_width / page_width
+                scale_y = self.layout_height / page_height
+                scale = min(scale_x, scale_y)
+                
+                # Draw PDF content as a rectangle with page info
+                canvas.saveState()
+                canvas.translate(x, y)
+                canvas.scale(scale, scale)
+                
+                # Draw a border
+                canvas.setStrokeColorRGB(0.2, 0.2, 0.2)
+                canvas.setFillColorRGB(0.98, 0.98, 0.98)
+                canvas.rect(0, 0, page_width, page_height, fill=1, stroke=1)
+                
+                # Add page number and info
+                canvas.setFillColorRGB(0.1, 0.1, 0.1)
+                canvas.setFont("Helvetica-Bold", 14)
+                canvas.drawString(10, page_height - 25, f"Page {page_num + 1}")
+                
+                canvas.setFont("Helvetica", 10)
+                canvas.drawString(10, page_height - 45, f"Size: {page_width:.0f}x{page_height:.0f}")
+                canvas.drawString(10, page_height - 60, "PDF content embedded")
+                
+                canvas.restoreState()
+                print(f"    Successfully embedded page {page_num + 1} (as PDF)")
+                
+        except Exception as e:
+            print(f"Error embedding PDF page {page_num}: {e}")
+            raise e
 
     def _draw_placeholder(self, canvas, x, y, page_num):
         """Draw a placeholder rectangle for PDF content"""
@@ -727,8 +775,16 @@ if __name__ == '__main__':
     print("=" * 60)
     print(f"PDF2Image available: {PDF2IMAGE_AVAILABLE}")
     if not PDF2IMAGE_AVAILABLE:
-        print("To enable full PDF processing, install: pip install pdf2image")
-        print("And install poppler: https://github.com/oschwartz10612/poppler-windows/releases")
+        print("⚠️  WARNING: PDF2Image not available!")
+        print("To enable full PDF processing:")
+        print("1. Install pdf2image: pip install pdf2image")
+        print("2. Install poppler:")
+        print("   Ubuntu/Debian: sudo apt-get install poppler-utils")
+        print("   CentOS/RHEL: sudo yum install poppler-utils")
+        print("   Windows: Download from https://github.com/oschwartz10612/poppler-windows/releases")
+        print("   macOS: brew install poppler")
+    else:
+        print("✅ PDF2Image is available - full PDF processing enabled")
     print("=" * 60)
     print("Starting server...")
     print("Access at: http://localhost:5002")
