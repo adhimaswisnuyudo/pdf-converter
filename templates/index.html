@@ -1,0 +1,376 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Setting Didieu</title>
+    <style>
+        * {
+            margin: 0;
+            padding: 0;
+            box-sizing: border-box;
+        }
+
+        body {
+            font-family: 'Segoe UI', Tahoma, Geneva, Verdana, sans-serif;
+            background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
+            min-height: 100vh;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            padding: 20px;
+        }
+
+        .container {
+            background: white;
+            border-radius: 20px;
+            box-shadow: 0 20px 40px rgba(0, 0, 0, 0.1);
+            padding: 40px;
+            max-width: 600px;
+            width: 100%;
+            text-align: center;
+        }
+
+        .header {
+            margin-bottom: 30px;
+        }
+
+        .header h1 {
+            color: #333;
+            font-size: 2.5em;
+            margin-bottom: 10px;
+            font-weight: 300;
+        }
+
+        .header p {
+            color: #666;
+            font-size: 1.1em;
+            line-height: 1.6;
+        }
+
+        .upload-area {
+            border: 3px dashed #ddd;
+            border-radius: 15px;
+            padding: 40px 20px;
+            margin: 30px 0;
+            transition: all 0.3s ease;
+            cursor: pointer;
+            background: #fafafa;
+        }
+
+        .upload-area:hover {
+            border-color: #667eea;
+            background: #f0f4ff;
+        }
+
+        .upload-area.dragover {
+            border-color: #667eea;
+            background: #e8f2ff;
+            transform: scale(1.02);
+        }
+
+        .upload-icon {
+            font-size: 3em;
+            color: #667eea;
+            margin-bottom: 15px;
+        }
+
+        .upload-text {
+            color: #666;
+            font-size: 1.1em;
+            margin-bottom: 10px;
+        }
+
+        .upload-subtext {
+            color: #999;
+            font-size: 0.9em;
+        }
+
+        .file-input {
+            display: none;
+        }
+
+        .btn {
+            background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
+            color: white;
+            border: none;
+            padding: 15px 30px;
+            border-radius: 25px;
+            font-size: 1.1em;
+            cursor: pointer;
+            transition: all 0.3s ease;
+            margin: 10px;
+            min-width: 150px;
+        }
+
+        .btn:hover {
+            transform: translateY(-2px);
+            box-shadow: 0 10px 20px rgba(102, 126, 234, 0.3);
+        }
+
+        .btn:disabled {
+            opacity: 0.6;
+            cursor: not-allowed;
+            transform: none;
+        }
+
+        .progress {
+            display: none;
+            margin: 20px 0;
+        }
+
+        .progress-bar {
+            width: 100%;
+            height: 8px;
+            background: #f0f0f0;
+            border-radius: 4px;
+            overflow: hidden;
+        }
+
+        .progress-fill {
+            height: 100%;
+            background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
+            width: 0%;
+            transition: width 0.3s ease;
+        }
+
+        .result {
+            display: none;
+            margin: 20px 0;
+            padding: 20px;
+            background: #f8f9fa;
+            border-radius: 10px;
+            border-left: 4px solid #28a745;
+        }
+
+        .error {
+            display: none;
+            margin: 20px 0;
+            padding: 20px;
+            background: #f8d7da;
+            border-radius: 10px;
+            border-left: 4px solid #dc3545;
+            color: #721c24;
+        }
+
+        .file-info {
+            margin: 15px 0;
+            padding: 15px;
+            background: #e9ecef;
+            border-radius: 8px;
+            text-align: left;
+        }
+
+        .file-info h4 {
+            color: #495057;
+            margin-bottom: 5px;
+        }
+
+        .file-info p {
+            color: #6c757d;
+            font-size: 0.9em;
+        }
+
+        .specs {
+            margin-top: 30px;
+            padding: 20px;
+            background: #f8f9fa;
+            border-radius: 10px;
+            text-align: left;
+        }
+
+        .specs h3 {
+            color: #495057;
+            margin-bottom: 15px;
+            text-align: center;
+        }
+
+        .specs ul {
+            color: #6c757d;
+            line-height: 1.8;
+        }
+
+        .specs li {
+            margin-bottom: 5px;
+        }
+    </style>
+</head>
+<body>
+    <div class="container">
+        <div class="header">
+            <h1>Setting Didieu</h1>
+            <p>Salembar Dieusi opat ID Card</p>
+        </div>
+
+        <div class="upload-area" id="uploadArea">
+            <div class="upload-icon">📄</div>
+            <div class="upload-text">Drop your PDF here or click to browse</div>
+            <div class="upload-subtext">Supports PDF files up to 16MB</div>
+            <input type="file" id="fileInput" class="file-input" accept=".pdf">
+        </div>
+
+        <div class="file-info" id="fileInfo" style="display: none;">
+            <h4>Selected File:</h4>
+            <p id="fileName"></p>
+            <p id="fileSize"></p>
+        </div>
+
+        <button class="btn" id="convertBtn" style="display: none;">Convert PDF</button>
+
+        <div class="progress" id="progress">
+            <div class="progress-bar">
+                <div class="progress-fill" id="progressFill"></div>
+            </div>
+            <p style="margin-top: 10px; color: #666;">Processing your PDF...</p>
+        </div>
+
+        <div class="result" id="result">
+            <h3 style="color: #28a745; margin-bottom: 10px;">✅ Conversion Successful!</h3>
+            <p>Your PDF has been converted to A4 format with 2×2 grid layout.</p>
+            <button class="btn" id="downloadBtn">Download Converted PDF</button>
+        </div>
+
+        <div class="error" id="error">
+            <h3 style="color: #dc3545; margin-bottom: 10px;">❌ Error</h3>
+            <p id="errorMessage"></p>
+        </div>
+
+    </div>
+
+    <script>
+        const uploadArea = document.getElementById('uploadArea');
+        const fileInput = document.getElementById('fileInput');
+        const fileInfo = document.getElementById('fileInfo');
+        const fileName = document.getElementById('fileName');
+        const fileSize = document.getElementById('fileSize');
+        const convertBtn = document.getElementById('convertBtn');
+        const progress = document.getElementById('progress');
+        const progressFill = document.getElementById('progressFill');
+        const result = document.getElementById('result');
+        const error = document.getElementById('error');
+        const errorMessage = document.getElementById('errorMessage');
+        const downloadBtn = document.getElementById('downloadBtn');
+
+        let selectedFile = null;
+        let downloadUrl = null;
+
+        // Upload area click handler
+        uploadArea.addEventListener('click', () => {
+            fileInput.click();
+        });
+
+        // File input change handler
+        fileInput.addEventListener('change', (e) => {
+            const file = e.target.files[0];
+            if (file) {
+                handleFileSelect(file);
+            }
+        });
+
+        // Drag and drop handlers
+        uploadArea.addEventListener('dragover', (e) => {
+            e.preventDefault();
+            uploadArea.classList.add('dragover');
+        });
+
+        uploadArea.addEventListener('dragleave', () => {
+            uploadArea.classList.remove('dragover');
+        });
+
+        uploadArea.addEventListener('drop', (e) => {
+            e.preventDefault();
+            uploadArea.classList.remove('dragover');
+            
+            const files = e.dataTransfer.files;
+            if (files.length > 0) {
+                handleFileSelect(files[0]);
+            }
+        });
+
+        function handleFileSelect(file) {
+            if (!file.type.includes('pdf')) {
+                showError('Please select a PDF file.');
+                return;
+            }
+
+            if (file.size > 16 * 1024 * 1024) {
+                showError('File size must be less than 16MB.');
+                return;
+            }
+
+            selectedFile = file;
+            fileName.textContent = file.name;
+            fileSize.textContent = `Size: ${(file.size / 1024 / 1024).toFixed(2)} MB`;
+            fileInfo.style.display = 'block';
+            convertBtn.style.display = 'inline-block';
+            hideMessages();
+        }
+
+        // Convert button handler
+        convertBtn.addEventListener('click', () => {
+            if (!selectedFile) return;
+
+            const formData = new FormData();
+            formData.append('file', selectedFile);
+
+            convertBtn.disabled = true;
+            progress.style.display = 'block';
+            hideMessages();
+
+            // Simulate progress
+            let progressValue = 0;
+            const progressInterval = setInterval(() => {
+                progressValue += Math.random() * 15;
+                if (progressValue > 90) progressValue = 90;
+                progressFill.style.width = progressValue + '%';
+            }, 200);
+
+            fetch('/upload', {
+                method: 'POST',
+                body: formData
+            })
+            .then(response => response.json())
+            .then(data => {
+                clearInterval(progressInterval);
+                progressFill.style.width = '100%';
+
+                setTimeout(() => {
+                    if (data.success) {
+                        downloadUrl = data.download_url;
+                        progress.style.display = 'none';
+                        result.style.display = 'block';
+                        convertBtn.style.display = 'none';
+                    } else {
+                        showError(data.error || 'Conversion failed');
+                        progress.style.display = 'none';
+                        convertBtn.disabled = false;
+                    }
+                }, 500);
+            })
+            .catch(err => {
+                clearInterval(progressInterval);
+                showError('Network error: ' + err.message);
+                progress.style.display = 'none';
+                convertBtn.disabled = false;
+            });
+        });
+
+        // Download button handler
+        downloadBtn.addEventListener('click', () => {
+            if (downloadUrl) {
+                window.location.href = downloadUrl;
+            }
+        });
+
+        function showError(message) {
+            errorMessage.textContent = message;
+            error.style.display = 'block';
+        }
+
+        function hideMessages() {
+            result.style.display = 'none';
+            error.style.display = 'none';
+        }
+    </script>
+</body>
+</html>
