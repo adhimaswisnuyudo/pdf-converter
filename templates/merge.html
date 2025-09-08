@@ -1,0 +1,151 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Merge PDFs</title>
+    <style>
+        * { margin: 0; padding: 0; box-sizing: border-box; }
+        body { font-family: 'Segoe UI', Tahoma, Geneva, Verdana, sans-serif; background: linear-gradient(135deg, #667eea 0%, #764ba2 100%); min-height: 100vh; display: flex; align-items: center; justify-content: center; padding: 20px; }
+        .container { background: white; border-radius: 20px; box-shadow: 0 20px 40px rgba(0,0,0,0.1); padding: 40px; max-width: 700px; width: 100%; }
+        .header { margin-bottom: 30px; text-align: center; }
+        .header h1 { color: #333; font-size: 2em; margin-bottom: 10px; font-weight: 300; }
+        .header a { color: #667eea; text-decoration: underline; }
+        .upload-area { border: 3px dashed #ddd; border-radius: 15px; padding: 30px 20px; margin: 20px 0; transition: all 0.3s ease; cursor: pointer; background: #fafafa; text-align: center; }
+        .upload-area.dragover { border-color: #667eea; background: #e8f2ff; transform: scale(1.02); }
+        .file-list { margin-top: 15px; }
+        .file-item { background: #e9ecef; border-radius: 8px; padding: 10px 12px; margin-bottom: 8px; color: #495057; display: flex; justify-content: space-between; align-items: center; }
+        .btn { background: linear-gradient(135deg, #667eea 0%, #764ba2 100%); color: white; border: none; padding: 12px 24px; border-radius: 25px; font-size: 1em; cursor: pointer; transition: all 0.3s ease; margin: 8px 6px; min-width: 150px; }
+        .btn:hover { transform: translateY(-2px); box-shadow: 0 10px 20px rgba(102,126,234,0.3); }
+        .btn:disabled { opacity: 0.6; cursor: not-allowed; transform: none; }
+        .progress { display: none; margin: 15px 0; }
+        .progress-bar { width: 100%; height: 8px; background: #f0f0f0; border-radius: 4px; overflow: hidden; }
+        .progress-fill { height: 100%; background: linear-gradient(135deg, #667eea 0%, #764ba2 100%); width: 0%; transition: width 0.3s ease; }
+        .result, .error { display: none; margin: 15px 0; padding: 15px; border-radius: 10px; }
+        .result { background: #f8f9fa; border-left: 4px solid #28a745; }
+        .error { background: #f8d7da; border-left: 4px solid #dc3545; color: #721c24; }
+        .hint { color: #666; font-size: 0.95em; text-align: center; }
+    </style>
+ </head>
+ <body>
+  <div class="container">
+    <div class="header">
+      <h1>Merge PDFs</h1>
+      <p class="hint">Unggah beberapa PDF dengan format yang sama lalu gabungkan dan tata 2×2 seperti halaman utama.</p>
+      <p style="margin-top:10px"><a href="/">Kembali ke halaman utama</a></p>
+    </div>
+
+    <div class="upload-area" id="uploadArea">
+      <div style="font-size: 2em; color:#667eea;">📄📄</div>
+      <div style="color:#666; margin-top:8px;">Drop beberapa PDF di sini atau klik untuk memilih</div>
+      <div style="color:#999; font-size:0.9em;">Maks 16MB per file</div>
+      <input type="file" id="fileInput" multiple accept=".pdf" style="display:none">
+    </div>
+
+    <div class="file-list" id="fileList"></div>
+
+    <div style="text-align:center;">
+      <button class="btn" id="mergeBtn" disabled>Merge & Convert</button>
+    </div>
+
+    <div class="progress" id="progress">
+      <div class="progress-bar"><div class="progress-fill" id="progressFill"></div></div>
+      <p class="hint" style="margin-top:10px;">Memproses PDF...</p>
+    </div>
+
+    <div class="result" id="result">
+      <h3 style="color:#28a745; margin-bottom:8px;">✅ Berhasil!</h3>
+      <p>File gabungan siap diunduh.</p>
+      <div style="text-align:center;">
+        <button class="btn" id="downloadBtn">Download PDF</button>
+      </div>
+    </div>
+
+    <div class="error" id="error">
+      <h3 style="color:#dc3545; margin-bottom:8px;">❌ Error</h3>
+      <p id="errorMessage"></p>
+    </div>
+  </div>
+
+  <script>
+    const uploadArea = document.getElementById('uploadArea');
+    const fileInput = document.getElementById('fileInput');
+    const fileList = document.getElementById('fileList');
+    const mergeBtn = document.getElementById('mergeBtn');
+    const progress = document.getElementById('progress');
+    const progressFill = document.getElementById('progressFill');
+    const result = document.getElementById('result');
+    const error = document.getElementById('error');
+    const errorMessage = document.getElementById('errorMessage');
+    const downloadBtn = document.getElementById('downloadBtn');
+
+    let selectedFiles = [];
+    let downloadUrl = null;
+
+    uploadArea.addEventListener('click', () => fileInput.click());
+    uploadArea.addEventListener('dragover', (e) => { e.preventDefault(); uploadArea.classList.add('dragover'); });
+    uploadArea.addEventListener('dragleave', () => uploadArea.classList.remove('dragover'));
+    uploadArea.addEventListener('drop', (e) => {
+      e.preventDefault();
+      uploadArea.classList.remove('dragover');
+      const files = Array.from(e.dataTransfer.files).filter(f => f.type.includes('pdf'));
+      handleFiles(files);
+    });
+    fileInput.addEventListener('change', (e) => handleFiles(Array.from(e.target.files)));
+
+    function handleFiles(files) {
+      const valid = files.filter(f => f.type.includes('pdf') && f.size <= 16 * 1024 * 1024);
+      if (valid.length === 0) { showError('Pilih file PDF (maks 16MB).'); return; }
+      hideMessages();
+      selectedFiles = valid;
+      renderList();
+      mergeBtn.disabled = selectedFiles.length < 2;
+    }
+
+    function renderList() {
+      fileList.innerHTML = '';
+      selectedFiles.forEach((f, idx) => {
+        const div = document.createElement('div');
+        div.className = 'file-item';
+        div.innerHTML = `<span>${idx+1}. ${f.name} — ${(f.size/1024/1024).toFixed(2)} MB</span>`;
+        fileList.appendChild(div);
+      });
+    }
+
+    mergeBtn.addEventListener('click', () => {
+      if (selectedFiles.length < 2) return;
+      const formData = new FormData();
+      selectedFiles.forEach(f => formData.append('files', f));
+
+      mergeBtn.disabled = true;
+      progress.style.display = 'block';
+      let p = 0; const itv = setInterval(() => { p += Math.random()*15; if (p>90) p=90; progressFill.style.width = p+'%'; }, 200);
+
+      fetch('/merge-upload', { method: 'POST', body: formData })
+        .then(r => r.json())
+        .then(data => {
+          clearInterval(itv); progressFill.style.width = '100%';
+          setTimeout(() => {
+            if (data.success) {
+              downloadUrl = data.download_url;
+              progress.style.display = 'none';
+              result.style.display = 'block';
+            } else {
+              showError(data.error || 'Gagal memproses.');
+              progress.style.display = 'none';
+              mergeBtn.disabled = false;
+            }
+          }, 400);
+        })
+        .catch(err => { clearInterval(itv); showError('Network error: ' + err.message); progress.style.display = 'none'; mergeBtn.disabled = false; });
+    });
+
+    downloadBtn.addEventListener('click', () => { if (downloadUrl) window.location.href = downloadUrl; });
+
+    function showError(msg) { errorMessage.textContent = msg; error.style.display = 'block'; }
+    function hideMessages() { result.style.display = 'none'; error.style.display = 'none'; }
+  </script>
+ </body>
+ </html>
+
+

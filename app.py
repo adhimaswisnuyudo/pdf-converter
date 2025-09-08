@@ -17,6 +17,10 @@ os.makedirs(app.config['OUTPUT_FOLDER'], exist_ok=True)
 def index():
     return render_template('index.html')
 
+@app.route('/merge')
+def merge_page():
+    return render_template('merge.html')
+
 @app.route('/upload', methods=['POST'])
 def upload_file():
     if 'file' not in request.files:
@@ -62,6 +66,63 @@ def upload_file():
             os.remove(output_path)
         
         return jsonify({'error': f'Processing failed: {str(e)}'}), 500
+
+@app.route('/merge-upload', methods=['POST'])
+def merge_upload():
+    if 'files' not in request.files:
+        return jsonify({'error': 'No files uploaded'}), 400
+
+    files = request.files.getlist('files')
+    if len(files) < 2:
+        return jsonify({'error': 'Please upload at least two PDF files'}), 400
+
+    temp_paths = []
+    input_paths = []
+    file_id = str(uuid.uuid4())
+    output_filename = f"{file_id}_output.pdf"
+    output_path = os.path.join(app.config['OUTPUT_FOLDER'], output_filename)
+
+    try:
+        # Save all uploaded PDFs temporarily
+        for f in files:
+            if not f.filename.lower().endswith('.pdf'):
+                continue
+            temp_name = f"{uuid.uuid4()}_input.pdf"
+            temp_path = os.path.join(app.config['UPLOAD_FOLDER'], temp_name)
+            f.save(temp_path)
+            temp_paths.append(temp_path)
+            input_paths.append(temp_path)
+
+        if len(input_paths) < 2:
+            # Clean up and error if not enough valid PDFs
+            for p in temp_paths:
+                if os.path.exists(p):
+                    os.remove(p)
+            return jsonify({'error': 'Please upload at least two valid PDF files'}), 400
+
+        # Process: merge then layout
+        processor = PDFProcessor()
+        processor.merge_and_process_pdfs(input_paths, output_path)
+
+        # Cleanup uploaded temp inputs
+        for p in temp_paths:
+            if os.path.exists(p):
+                os.remove(p)
+
+        return jsonify({
+            'success': True,
+            'download_url': f'/download/{file_id}',
+            'filename': f"merged_output_{file_id}.pdf"
+        })
+
+    except Exception as e:
+        # Cleanup on error
+        for p in temp_paths:
+            if os.path.exists(p):
+                os.remove(p)
+        if os.path.exists(output_path):
+            os.remove(output_path)
+        return jsonify({'error': f'Merge processing failed: {str(e)}'}), 500
 
 @app.route('/download/<file_id>')
 def download_file(file_id):

@@ -9,6 +9,7 @@ Aplikasi web untuk mengkonversi PDF dengan ukuran 128mm × 96mm menjadi format A
 - **Multiple Pages**: Setiap halaman A4 berisi maksimal 4 layout dari PDF asli
 - **Automatic Scaling**: Mempertahankan aspect ratio dan center content
 - **Web Interface**: Upload dan download yang mudah digunakan
+- **Merge PDF**: Gabungkan beberapa PDF dengan format yang sama lalu tata ke layout 2×2
 
 ## Contoh Konversi
 
@@ -57,6 +58,13 @@ pdf-converter/
 2. Klik "Convert PDF"
 3. Tunggu proses konversi selesai
 4. Download hasil konversi
+
+### Halaman Merge PDF
+
+1. Klik tautan "Go to Merge PDF page" di halaman utama atau akses `http://localhost:5002/merge`
+2. Upload 2 atau lebih file PDF dengan format yang sama (maks 16MB per file)
+3. Klik "Merge & Convert"
+4. Download hasil gabungan yang sudah ditata 2×2 per halaman
 
 ## Catatan
 

@@ -47,6 +47,39 @@ class PDFProcessor:
         print(f"Start position: ({self.start_x/mm:.1f}mm, {self.start_y/mm:.1f}mm)")
         print(f"Scale factor: {self.scale:.3f}")
 
+    def merge_and_process_pdfs(self, input_paths, output_path):
+        """Merge multiple PDFs into a single PDF and process with existing layout."""
+        try:
+            # Create temporary merged input
+            with tempfile.NamedTemporaryFile(delete=False, suffix='.pdf') as temp_merged:
+                merged_path = temp_merged.name
+
+            merger = PyPDF2.PdfWriter()
+
+            # Append pages from all inputs in order
+            for path in input_paths:
+                if not os.path.exists(path):
+                    continue
+                with open(path, 'rb') as f:
+                    reader = PyPDF2.PdfReader(f)
+                    for page in reader.pages:
+                        merger.add_page(page)
+
+            # Write merged PDF
+            with open(merged_path, 'wb') as out_f:
+                merger.write(out_f)
+
+            # Process merged PDF using existing pipeline
+            self.process_pdf(merged_path, output_path)
+
+        finally:
+            # Cleanup merged temp file
+            try:
+                if 'merged_path' in locals() and os.path.exists(merged_path):
+                    os.remove(merged_path)
+            except Exception:
+                pass
+
     def process_pdf(self, input_path, output_path):
         """Process PDF and create A4 layout with 2x2 grid"""
         try:
